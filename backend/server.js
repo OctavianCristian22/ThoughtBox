@@ -65,42 +65,50 @@ ThoughtBox.get('/api/test', (req, res) => {
 
 // Endpoint pentru toate postarile
 
-ThoughtBox.get('/api/posts', (req,res) => {
-    res.json(posts);
+ThoughtBox.get('/api/posts', async (req, res) => {
+    try {
+        const posts = await Post.find().sort({ createdAt: -1 });
+        res.json(posts);
+    } catch (error) {
+        res.status(500).json({ error: 'Eroare la încărcarea postărilor' });
+    }
 });
 
 // Endpoint pentru o postare specifica
 
-ThoughtBox.get('/api/posts/:id', (req,res) => {
-    const postId=parseInt(req.params.id);
-    const post = posts.find(p => p.id == postId);
-
-    if(!post){
-        return res.status(404).json({ error: "Postarea nu a fost gasita!" });
+ThoughtBox.get('/api/posts/:id', async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ error: "Postarea nu a fost găsită!" });
+        }
+        res.json(post);
+    } catch (error) {
+        res.status(500).json({ error: 'Eroare la încărcarea postării' });
     }
-    res.json(post);
 });
 
 // POST Endpoint
 
-ThoughtBox.post('/api/posts' ,auth, async (req,res) => {
+ThoughtBox.post('/api/posts', auth, async (req, res) => {
     try {
-        const {title,content,tags} = req.body;
+        const { title, content, tags } = req.body;
 
-        if (!title || !content)
-            return res.status(400).json({error: "Titlul si continutul sunt obligatorii !"});
+        if (!title || !content) {
+            return res.status(400).json({ error: "Titlul și conținutul sunt obligatorii!" });
+        }
 
-        const newPost = {   
+        const newPost = new Post({  // ← ADAUGĂ new Post()
             title,
             content,
             author: req.user.username,
-            createdAt: new Date(),
             tags: tags || []
-        };
+        });
 
         const savedPost = await newPost.save();
         res.status(201).json(savedPost);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Eroare la salvarea postării' });
     }
 });
@@ -205,7 +213,8 @@ ThoughtBox.post('/api/auth/register', async (req,res) => {
 
 // Login
 
-ThoughtBox.post('/api/auth/login', async (req,res) => {
+ThoughtBox.post('/api/auth/login', async (req, res) => {
+    console.log('Login request received:', req.body); // DEBUG
     try {
 
         const { login, password } = req.body;
@@ -227,11 +236,11 @@ ThoughtBox.post('/api/auth/login', async (req,res) => {
             return res.status(400).json({error: "Credentiale invalide !"});
         }
 
-        const toke=jwt.sign(
-             { userId: user._id },
-             JWT_SECRET,
-             { expiredIn: '7d' }
-        );
+        const token = jwt.sign(
+    { userId: user._id },
+    JWT_SECRET,
+    { expiresIn: '7d' }  // ← CORECT (fără "d" la sfârșit)
+);
 
         res.json({
             token,
@@ -250,9 +259,8 @@ ThoughtBox.post('/api/auth/login', async (req,res) => {
     }
 });
 
-ThoughtBox.get('/api/auth/me', auth, async (req,res) => {
+ThoughtBox.get('/api/auth/me', auth, async (req, res) => {
     res.json({
-        token,
         user: {
             id: req.user._id,
             username: req.user.username,
