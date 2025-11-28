@@ -3,23 +3,30 @@ const User = require('../models/User');
 
 const auth = async (req, res, next) => {
     try {
-        const token = req.header('Authorization')?.replace('Bearer ', ' ');
-
-        if(!token) {
-            return res.status(401).json({error: "Access denied. No token provided. "});
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        console.log('Received token:', token); // DEBUG
+        
+        if (!token) {
+            console.log('No token provided'); // DEBUG
+            return res.status(401).json({ error: 'Access denied. No token provided.' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'thoughtbox-secret-key');
+        console.log('Decoded token:', decoded); // DEBUG
+        
         const user = await User.findById(decoded.userId).select('-password');
-
-        if(!user) {
-            return res.status(401).json({error: " Token is not valid "});
+        console.log('Found user:', user); // DEBUG
+        
+        if (!user) {
+            console.log('User not found'); // DEBUG
+            return res.status(401).json({ error: 'Token is not valid.' });
         }
 
         req.user = user;
         next();
     } catch (error) {
-        res.status(401).json({error: "Token is not valid"});
+        console.log('Auth error:', error); // DEBUG
+        res.status(401).json({ error: 'Token is not valid.' });
     }
 };
 
