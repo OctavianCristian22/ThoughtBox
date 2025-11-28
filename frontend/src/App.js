@@ -1,46 +1,75 @@
-import { useState } from "react";
-import PostList from './components/PostList';
-import PostForm from './components/PostForm';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './components/AuthContext';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import './App.css';
 
-function App() {
-  const [message,setMessage]=useState('');
-  const [refreshPosts, setRefreshPosts] = useState(0);
+function ProtectedRoute({ children }) {
+    const { isAuthenticated, loading } = useAuth();
 
-  const testBackend = async () => {
-    try {
-    const response = await fetch('/api/test');
-    const data = await response.json();
-      setMessage(data.message);
-      console.log("Răspuns de la backend:", data);
-    } catch (error) {
-      console.error("Eroare: ", error);
-      setMessage("Eroare la conectare");
+    if (loading) {
+        return (
+            <div className="loading-screen">
+                <div className="loading-spinner"></div>
+                <p>Se încarcă...</p>
+            </div>
+        );
     }
-  };
 
-  const handlePostAdded = () => {
-    setRefreshPosts(prev => prev + 1);
-  };
+    return isAuthenticated ? children : <Navigate to="/login" />;
+}
 
-  return (
-    <div className="App">
-      <header className="app-header">
-        <h1>ThoughtBox</h1>
-        <p>You have a thought? Write it down.</p>
-      </header>
+function PublicRoute({ children }) {
+    const { isAuthenticated, loading } = useAuth();
 
-      <main>
-        <PostForm onPostAdded={handlePostAdded} />
-        <PostList key={refreshPosts} />
+    if (loading) {
+        return (
+            <div className="loading-screen">
+                <div className="loading-spinner"></div>
+                <p>Se încarcă...</p>
+            </div>
+        );
+    }
 
-        <div className="test-section">
-          <button onClick={testBackend}>Test Backend</button>
-          {message && <p>Mesaj de la server: {message}</p>}
-        </div>
-      </main>
-    </div>
-  );
+    return isAuthenticated ? <Navigate to="/" /> : children;
+}
+
+function AppRoutes() {
+    return (
+        <Router>
+            <Routes>
+                <Route path="/" element={<Home />} />
+                
+                <Route 
+                    path="/login" 
+                    element={
+                        <PublicRoute>
+                            <Login />
+                        </PublicRoute>
+                    } 
+                />
+                <Route 
+                    path="/register" 
+                    element={
+                        <PublicRoute>
+                            <Register />
+                        </PublicRoute>
+                    } 
+                />
+
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+        </Router>
+    );
+}
+
+function App() {
+    return (
+        <AuthProvider>
+            <AppRoutes />
+        </AuthProvider>
+    );
 }
 
 export default App;
